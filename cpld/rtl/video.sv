@@ -38,7 +38,8 @@ module video(
     output clk12_5hz,
     output clk6_25hz,
     output clk3_125hz,
-    output clk1_5625hz
+    output clk1_5625hz,
+    input [5:0] timex_mode
 );
 
 reg  [8:0] vc;
@@ -181,10 +182,16 @@ end
 
 
 /* SCREEN CONTROLLER */
+
+wire timex_page = timex_mode[0];
+wire timex_hi_col = timex_mode[1];
+wire timex_hi_res = timex_mode[2]; // must be set together with [1]
+
 wire screen_show = (vc < V_AREA) && (hc0 >= (SCREEN_DELAY<<2) - 1) && (hc0 < ((H_AREA + SCREEN_DELAY)<<2) - 1);
 wire screen_update = hc0[4:0] == 5'b10011;
+wire odd_column_update = (hc0[4:0] == 5'b00011) && timex_hi_res;
 wire border_update = (hc0[4:0] == 5'b10011) || (machine == MACHINE_PENT && ck7);
-wire bitmap_shift = hc0[1:0] == 2'b11;
+wire bitmap_shift = hc0[1:0] == 2'b11 || timex_hi_res && hc0[0] == 1'b1;
 wire next_addr = hc0[4:0] == 5'b10001;
 
 reg screen_read;
@@ -204,7 +211,7 @@ always @(posedge clk28 or negedge rst_n) begin
     end
 end
 
-reg [7:0] bitmap, attr, bitmap_next, attr_next;
+reg [7:0] bitmap, attr, bitmap_next, attr_next, bitmap_odd;
 reg [7:0] up_ink, up_paper, up_ink_next, up_paper_next;
 
 reg [1:0] read_step, read_step_cur;
@@ -212,8 +219,11 @@ assign read_req = 1'b1; // just to simplify logic
 assign read_req_addr =
     (read_step == 2'd3)? { attr_next[7:6], 1'b1, attr_next[5:3] } :
     (read_step == 2'd2)? { attr_next[7:6], 1'b0, attr_next[2:0] } :
-    (read_step == 2'd1)? { 2'b10, vaddr[7:6], vaddr[2:0], vaddr[5:3], haddr[7:3] } :
-                         { 5'b10110, vaddr[7:3], haddr[7:3] } ;
+    (read_step == 2'd1)? { 1'b1, timex_page, vaddr[7:6], vaddr[2:0], vaddr[5:3], haddr[7:3] } :
+    // TIMEX MULTICOLOR atribute address / second page / HiRes OddColumn:
+    (timex_hi_col)?      { 2'b11, vaddr[7:6], vaddr[2:0], vaddr[5:3], haddr[7:3] } :
+                         { 1'b1, timex_page, 3'b110, vaddr[7:3], haddr[7:3] } ;	
+
 assign read_req_is_up = (read_step == 2'd2) || (read_step == 2'd3);
 
 always @(posedge clk28 or negedge rst_n) begin
@@ -261,13 +271,21 @@ always @(posedge clk28 or negedge rst_n) begin
         up_paper <= 0;
     end
     else begin
-        if (screen_show && screen_update)
-            attr <= attr_next;
+        if (screen_show && screen_update) begin
+            if (timex_hi_res)
+                attr <= {2'b00, ~timex_mode[5:3], timex_mode[5:3]};
+            else
+                attr <= attr_next;
+            end
         else if (!screen_show && border_update)
             attr <= {2'b00, border[2:0], border[2:0]};
 
-        if (screen_update)
+        if (screen_update) begin
             bitmap <= bitmap_next;
+            bitmap_odd <= attr_next;
+        end
+        else if (odd_column_update)
+            bitmap <= bitmap_odd;
         else if (bitmap_shift)
             bitmap <= {bitmap[6:0], 1'b0};
 
@@ -280,10 +298,13 @@ end
 
 
 /* ATTRIBUTE PORT */
+// if timex mode turned on, returns it, for ability to detect timex mode!
 wire port_ff_attr = (machine == MACHINE_PENT) || hc[3:1] == 3'h6 || hc[3:1] == 3'h0;
 wire port_ff_bitmap = (hc[3] && hc[1]);
-assign port_ff_active = screen_read && (port_ff_attr || port_ff_bitmap);
+wire timex_mode_active = (timex_mode[5:0] != 6'b000000);
+assign port_ff_active = timex_mode_active || screen_read && (port_ff_attr || port_ff_bitmap);
 assign port_ff_data =
+    timex_mode_active? {2'b00, timex_mode[5:0]} :
     port_ff_attr? attr_next :
     port_ff_bitmap? bitmap_next :
     8'hFF;

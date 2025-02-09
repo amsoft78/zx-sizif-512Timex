@@ -1,4 +1,4 @@
-## Sizif-512
+## Sizif-512 Timex Video
 Another CPLD-based ZX Spectrum clone for 48K rubber case with some sweet features.
 
 [![photo](images/revD.small.jpg)](images/revD.jpg?raw=true)
@@ -15,6 +15,7 @@ Another CPLD-based ZX Spectrum clone for 48K rubber case with some sweet feature
 * PAL and RGB video output (Sega Mini-DIN/9 connector)
 * Digital video output header for EGA monitors, VGA scandoublers, etc.
 * ULAplus
+* Amsoft78 version specyfic: Timex HiColor and HiRes video modes
 * Mono covox (Pentagon ans SpecDrum standards)
 * SounDrive (4-channel stereo covox)
 * WiFi addon ([link](https://github.com/UzixLS/zx-sizif-512-wifi))
