@@ -186,6 +186,7 @@ wire even_line;
 wire clk14, clk7, clk35, ck14, ck7, ck35, clk12_5hz;
 wire vsync0, hsync0;
 wire [5:0] timex_mode;
+wire ext_palette;
 assign vsync = zxkit1? clk14 : vsync0;
 assign hsync = zxkit1? csync : hsync0;
 video video0(
@@ -224,7 +225,8 @@ video video0(
     .ck7(ck7),
     .ck35(ck35),
     .clk12_5hz(clk12_5hz),
-    .timex_mode(timex_mode)
+    .timex_mode(timex_mode),
+    .ext_palette(ext_palette)
 );
 
 
@@ -232,7 +234,7 @@ video video0(
 rgb rgb0(
     .clk28(clk28),
     .strobe(clk14 ^ even_line),
-    .up_en(up_active),
+    .up_en(ext_palette),
     .bright_boost(bright_boost),
     .r_i(r0),
     .g_i(g0),
