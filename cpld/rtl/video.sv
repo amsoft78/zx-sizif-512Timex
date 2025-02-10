@@ -189,7 +189,6 @@ wire timex_hi_res = timex_mode[2]; // must be set together with [1]
 
 wire screen_show = (vc < V_AREA) && (hc0 >= (SCREEN_DELAY<<2) - 1) && (hc0 < ((H_AREA + SCREEN_DELAY)<<2) - 1);
 wire screen_update = hc0[4:0] == 5'b10011;
-wire odd_column_update = (hc0[4:0] == 5'b00011) && timex_hi_res;
 wire border_update = (hc0[4:0] == 5'b10011) || (machine == MACHINE_PENT && ck7);
 wire bitmap_shift = hc0[1:0] == 2'b11 || timex_hi_res && hc0[0] == 1'b1;
 wire next_addr = hc0[4:0] == 5'b10001;
@@ -211,7 +210,7 @@ always @(posedge clk28 or negedge rst_n) begin
     end
 end
 
-reg [7:0] bitmap, attr, bitmap_next, attr_next, bitmap_odd;
+reg [7:0] bitmap, attr, bitmap_next, attr_next, bitmap_odd, bitmap_odd_next;
 reg [7:0] up_ink, up_paper, up_ink_next, up_paper_next;
 
 reg [1:0] read_step, read_step_cur;
@@ -234,6 +233,7 @@ always @(posedge clk28 or negedge rst_n) begin
         bitmap_next <= 0;
         up_ink_next <= 0;
         up_paper_next <= 0;
+        bitmap_odd_next <= 0;		  
     end
     else begin
         if (next_addr)
@@ -246,8 +246,14 @@ always @(posedge clk28 or negedge rst_n) begin
         if (read_req_ack)
             read_step_cur <= read_step;
 
-        if (read_data_valid && read_step_cur == 2'd0 && screen_read)
-            attr_next <= read_data;
+        if (read_data_valid && read_step_cur == 2'd0 && screen_read) begin
+            if (timex_hi_res) begin
+                bitmap_odd_next <= read_data;
+                attr_next <= {2'b00, ~timex_mode[5:3], timex_mode[5:3]};
+            end
+            else
+                attr_next <= read_data;
+        end
         else if (!screen_read && hc0[0])
             attr_next <= {2'b00, border[2:0], border[2:0]};
 
@@ -267,28 +273,25 @@ always @(posedge clk28 or negedge rst_n) begin
     if (!rst_n) begin
         attr <= 0;
         bitmap <= 0;
+        bitmap_odd <= 0;
         up_ink <= 0;
         up_paper <= 0;
     end
     else begin
         if (screen_show && screen_update) begin
-            if (timex_hi_res)
-                attr <= {2'b00, ~timex_mode[5:3], timex_mode[5:3]};
-            else
-                attr <= attr_next;
-            end
+            attr <= attr_next;
+        end
         else if (!screen_show && border_update)
             attr <= {2'b00, border[2:0], border[2:0]};
 
         if (screen_update) begin
             bitmap <= bitmap_next;
-            bitmap_odd <= attr_next;
+            bitmap_odd <= bitmap_odd_next;
         end
-        else if (odd_column_update)
-            bitmap <= bitmap_odd;
-        else if (bitmap_shift)
-            bitmap <= {bitmap[6:0], 1'b0};
-
+        else if (bitmap_shift) begin
+            bitmap <= {bitmap[6:0], bitmap_odd[7]};
+            bitmap_odd <= {bitmap_odd[6:0], 1'b0};
+        end
         if (screen_update)
             up_ink <= up_ink_next;
         if (screen_update)
@@ -298,13 +301,10 @@ end
 
 
 /* ATTRIBUTE PORT */
-// if timex mode turned on, returns it, for ability to detect timex mode!
 wire port_ff_attr = (machine == MACHINE_PENT) || hc[3:1] == 3'h6 || hc[3:1] == 3'h0;
 wire port_ff_bitmap = (hc[3] && hc[1]);
-wire timex_mode_active = (timex_mode[5:0] != 6'b000000);
-assign port_ff_active = timex_mode_active || screen_read && (port_ff_attr || port_ff_bitmap);
+assign port_ff_active = screen_read && (port_ff_attr || port_ff_bitmap);
 assign port_ff_data =
-    timex_mode_active? {2'b00, timex_mode[5:0]} :
     port_ff_attr? attr_next :
     port_ff_bitmap? bitmap_next :
     8'hFF;

@@ -25,6 +25,7 @@ reg port_ff3b_rd;
 wire [7:0] port_ff3b_data = {7'b0000000, active};
 reg [7:0] addr_reg;
 assign rw_addr = addr_reg[5:0];
+reg [5:0] prev_timex_mode;
 
 //shadowing timex mode from timex FF register write, is active even without UP enabled
 // unfortunatelly Sizif Magic menu uses lower-bytes FF port for its own purposes
@@ -40,13 +41,14 @@ always @(posedge clk28 or negedge rst_n) begin
         write_req <= 0;
         port_ff3b_rd <= 0;
         timex_mode <= 0;
-		uplus_video_page_cs <= 0;
+        prev_timex_mode <= 0;
+        uplus_video_page_cs <= 0;
         uplus_video_page <= 0;
     end
     else begin
         // 01 and all zeros are used to enable ULA+ pallete,
         // it would also disable timex mode, so exclude it!  
-	     uplus_video_page_cs <= port_bf3b_cs && bus.wr && mode_switching_data;
+        uplus_video_page_cs <= port_bf3b_cs && bus.wr && mode_switching_data;
         if (port_bf3b_cs && bus.wr) begin
             addr_reg <= bus.d;
             if (mode_switching_data) begin
@@ -61,8 +63,15 @@ always @(posedge clk28 or negedge rst_n) begin
         end
         if ((port_ff_cs || port_9ffd_cs) && bus.wr)
             timex_mode <= bus.d[5:0];
-        if (port_ff3b_cs && bus.wr && addr_reg == 8'b01000000)
+        if (port_ff3b_cs && bus.wr && addr_reg == 8'b01000000) begin
             active <= bus.d[0];
+            if (active && timex_mode == 5'b00000)
+                timex_mode <= prev_timex_mode;
+            else begin
+                prev_timex_mode <= timex_mode;
+                timex_mode <= 5'b00000;
+            end
+        end
 
         read_req  <= port_ff3b_cs && bus.rd && addr_reg[7:6] == 2'b00;
         write_req <= port_ff3b_cs && bus.wr && addr_reg[7:6] == 2'b00;
