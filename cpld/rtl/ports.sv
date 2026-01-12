@@ -18,8 +18,6 @@ module ports(
     input magic_map,
     input tape_in,
     input [5:0] timex_mode,
-    input uplus_video_page_cs,
-    input uplus_video_page,
 
     output reg tape_out,
     output reg beeper,
@@ -113,9 +111,6 @@ always @(posedge clk28 or negedge rst_n) begin
         video_page <= bus.d[3];
         rom_page128 <= bus.d[4];
         lock_7ffd <= bus.d[5];
-    end
-    else if (uplus_video_page_cs) begin
-        video_page <= uplus_video_page;
     end
 end
 
