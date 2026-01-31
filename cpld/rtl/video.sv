@@ -225,16 +225,17 @@ reg [7:0] bitmap, attr, bitmap_next, attr_next, bitmap_odd, bitmap_odd_next;
 reg [7:0] up_ink, up_paper, up_ink_next, up_paper_next;
 reg [7:0] up_col11, up_col01; // second ink, second paper in 4 in 16 color modes
 reg colors01and11;
-reg read_up; // reading from UlaPlus pallete in steps 2 and 3
+reg read_uplus_border_color;
 
 reg [1:0] read_step, read_step_cur;
 assign read_req = 1'b1; // just to simplify logic
 // TIMEX MULTICOLOR atribute address / HiRes OddColumn, CGA 4 and 16 color modes:
 wire read_2nd_page = timex_hi_col | CGA_mode16col; //| CGA_mode4col | BiPlanes_mode4col
 wire CGA_modes =  CGA_mode4col | CGA_mode16col | BiPlanes_mode4col;
+wire read_up = up_en & (~CGA_modes | read_uplus_border_color); // reading from UlaPlus pallete in steps 2 and 3
 
 wire attr_page =
-        read_step[1] ? read_step[0] : // in step 10 (2) read first page attib, in step 11(3) - second.
+        read_step[1] ? read_step[0] : // in step b10 (2) read first page attib, in step 11(3) - second.
         timex_page;                // in step 0, always follow regular zx / timex page setting 
 
 assign read_req_addr =
@@ -261,11 +262,11 @@ always @(posedge clk28 or negedge rst_n) begin
         up_paper_next <= 0;
         bitmap_odd_next <= 0;
         colors01and11 <= 0;
+        read_uplus_border_color <= 0;
     end
     else begin
         if (next_addr) begin
             read_step <= 0;
-            read_up <= up_en & ~CGA_modes;
         end
         // CGA_mode4col and BiPlanes_mode4col, reads both second page in step 0 and attributes in steps 2 & 3
         // however CGA_mode16col without ULA+ reads only bitmaps
@@ -277,27 +278,30 @@ always @(posedge clk28 or negedge rst_n) begin
         if (read_req_ack)
             read_step_cur <= read_step;
 
-        if (read_data_valid && read_step_cur == 2'd0 && screen_read) begin
-            if (~read_2nd_page | ~(timex_hi_res | CGA_modes))
-                attr_next <= read_data;  // in step "0" regular ZX or Timex HiCol attributes are read
-            else if (read_2nd_page) begin
-                bitmap_odd_next <= read_data;
+        if (read_data_valid && read_step_cur == 2'd0) begin
+            if (screen_read) begin
+                // in step "0" regular ZX or Timex HiCol attributes are read
                 if (timex_hi_res)
                     attr_next <= {1'b0, up_en, ~timex_mode[5:3], timex_mode[5:3]};
+                else
+                    attr_next <= read_data; 
+                bitmap_odd_next <= read_data;
+                read_uplus_border_color <= 0;
+            end
+            else if (CGA_modes) begin
+                // substituting 4th color from Timex to UlaPlus "zoned" (24) colors
+                attr_next <= {vaddr[7:6],  border[2:0], vaddr[5:3]};
+                read_uplus_border_color <= up_en && ~limit_palette16;
             end
             // BiPlanes_mode4col and CGA_mode16col (not restricted to Pentagon compatible) flip-flops colors
-            colors01and11 <= haddr[3] & (BiPlanes_mode4col | CGA_mode16col & up_en);
+            colors01and11 <= screen_read && haddr[3] & (BiPlanes_mode4col | CGA_mode16col & ~limit_palette16);
         end
-        else if (!screen_read && hc0[0]) begin
+        else if (!screen_read && hc0[0] && !CGA_modes) begin
             // timex HiRes keeps paper color on border.
             if (timex_hi_res)
                 attr_next <= {1'b0, up_en, ~timex_mode[5:3], ~timex_mode[5:3]};
             else
                 attr_next <= {2'b00, border[2:0], border[2:0]};
-            if (CGA_modes) begin
-                up_paper_next <= color16_256({1'b0, border[2:0]}); // stay?
-            end
-            bitmap_odd_next <= 0;
             colors01and11 <= 1'b0;
         end
 
@@ -305,12 +309,14 @@ always @(posedge clk28 or negedge rst_n) begin
             bitmap_next <= read_data;
         else if (!screen_read && hc0[0]) begin
             bitmap_next <= 0;
+            bitmap_odd_next <= 0;
+            colors01and11 <= 1'b0;
         end
 
         if (read_data_valid && read_step_cur == 2'd2) begin
             up_ink_next <= read_data;
         end
-        if (read_data_valid && read_step_cur == 2'd3 && (screen_read || read_up))
+        if (read_data_valid && read_step_cur == 2'd3)
             up_paper_next <= read_data;
     end
 end
@@ -326,23 +332,22 @@ always @(posedge clk28 or negedge rst_n) begin
         up_col01 <= 0;
     end
     else begin
-        if (screen_show && screen_update) begin
-            if (!CGA_modes)
-                attr <= attr_next;
-        end
-        else if (!screen_show && border_update) begin
-            // in CGA-style modes, the up_paper_next arleady contains proper border color
-            // it is true both with or without ULA+
-            if (ext_palette) begin
-                up_paper <= up_paper_next;
+        if (CGA_modes && up_en) begin
+            // in CGA-style modes with ULA+, the up_paper_next arleady contains proper border color
+            // registe "attr" is used to store the border colors to be used withing CGA4 scrren content drawing
+            if (!screen_show && screen_update) begin
+                attr <= up_ink_next;
+                // up_paper <= up_paper_next; // for further refactoring - make also border UP update
             end
-            // TODO check is it too late and a duplicate?
+        end
+        else if (screen_show && screen_update)
+            attr <= attr_next;
+        else if (!screen_show && border_update) begin
             // timex HiRes keeps paper color on border.
-            else if (timex_hi_res)
+            if (timex_hi_res)
                 attr <= {2'b00, ~timex_mode[5:3], ~timex_mode[5:3]};
             else
                 attr <= {2'b00, border[2:0], border[2:0]};
-
         end
 
         if (screen_update) begin
@@ -412,11 +417,19 @@ wire second_colpair_selector =
         ) :
         1'b0;
 // in 16Col mode, 12 colors is direct, rest is from ULAPlus
-wire CGA_mode16col_direct = screen_show & CGA_mode16col & (limit_palette16 | ~(bitmap[7] ^ bitmap[4]) | bitmap[5]);
+wire CGA_mode16col_direct = CGA_mode16col & (limit_palette16 | ~(bitmap[7] ^ bitmap[4]) | bitmap[5]);
 
 always @* begin
     if (blank)
         {g, r, b} = 0;
+    else if (CGA_modes & (~screen_show | 
+        ~CGA_mode16col & (second_playfield ^ second_colpair_selector)
+        ))
+        // BiPlanes_mode4col | CGA_mode4col background / timex colors
+        // for 11 choose additional Timex color, for 01 choose border
+        {g, r, b} = 
+            (~pixel) ? color16_256({1'b0, border[2:0]}) :
+                    ( up_en ? attr : color16_256 ({1'b1, timex_mode[5:3]}));
     else if (CGA_mode16col_direct) begin
         {g, r, b} = color16_256(bitmap[7:4]);
     end
@@ -431,12 +444,6 @@ always @* begin
         r = pixel? up_col11[4:2] : up_col01[4:2];
         b = pixel? up_col11[1:0] : up_col01[1:0];
     end
-    else if (CGA_modes)
-            // BiPlanes_mode4col | CGA_mode4col background / timex colors
-            // for 11 choose additional Timex color, for 01 choose border
-            {g, r, b} = 
-                (~pixel) ? color16_256({1'b0, border[2:0]}) :
-                        color16_256 ({1'b1, timex_mode[5:3]});
     else begin
         {g[2], r[2], b[1]} = (pixel ^ (attr[7] & blink))? attr[2:0] : attr[5:3];
         {g[1], r[1], b[0]} = ((g[2] | r[2] | b[1]) & attr[6])? 3'b111 : 3'b000;
