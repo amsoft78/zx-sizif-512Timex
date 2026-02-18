@@ -110,6 +110,8 @@ wire div_map;
 wire div_mapram;
 wire basic48_paged;
 wire fastforward;
+wire [1:0] port_FF_config;
+wire memory_SD_config;
 
 
 /* CPU BUS */
@@ -228,6 +230,7 @@ video video0(
     .clk12_5hz(clk12_5hz),
     .timex_mode(timex_mode),
     .suspend_multicolor(suspend_multicolor),
+    .port_FF_read_timex(port_FF_config[0]),
     .ext_palette(ext_palette)
 );
 
@@ -441,7 +444,9 @@ magic magic0(
     .bright_boost(bright_boost),
     .zxkit1(zxkit1),
     .joy_a_up(joy_a_up),
-    .fastforward(fastforward)
+    .fastforward(fastforward),
+    .port_FF(port_FF_config),
+    .memory_SD_config(memory_SD_config)
 );
 
 
@@ -601,7 +606,8 @@ ulaplus ulaplus0(
     .rw_addr(up_rw_addr),
     .timex_mode(timex_mode),
     .suspend_multicolor(suspend_multicolor),
-    .magic_map(magic_map)
+    .magic_map(magic_map),
+    .port_FF_config(port_FF_config)
 );
 
 
@@ -659,7 +665,8 @@ mem mem0(
     .div_dout(div_dout),
     .ay_dout_active(ay_dout_active),
     .ports_dout_active(ports_dout_active),
-    .ports_dout(ports_dout)
+    .ports_dout(ports_dout),
+    .memory_SD_config(memory_SD_config)
 );
 
 

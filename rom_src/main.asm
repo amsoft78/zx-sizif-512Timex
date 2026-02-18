@@ -569,6 +569,12 @@ save:
     ld de, var_save_screen
     ld hl, #4000
     ldir
+.save_graphics_mode:
+    ld bc, #9ffd     ; read Timex / CGA mode by eLeMeNt ZX port
+    in a, (c)
+    ld (var_save_graphisc_mode), a
+    xor a              ; set ZX Spectrum standard graphics mode
+    out (c), a
 .save_ulaplus:
     ld bc, #bf3b       ; set ulaplus address = mode register
     ld a, #40          ; ...
@@ -622,6 +628,10 @@ restore:
     out (c), a         ; ...
 .restore_screen:
     call restore_screen
+.restore_graphics_mode:
+    ld bc, #9ffd     ; restore Timex / CGA mode by eLeMeNt ZX port
+    ld a, (var_save_graphisc_mode)
+    out (c), a         ; ...
 .restore_ay:
     ld hl, var_save_ay+16 ; select second AY chip in TurboSound
     ld a, #fe             ; ...

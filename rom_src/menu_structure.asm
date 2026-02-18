@@ -66,6 +66,8 @@ menuadv: MENU_DEF 22
     MENUENTRY_T str_autoturbo     menu_autoturbo_value_cb menu_autoturbo_cb
     MENUENTRY_T str_zxkit1        menu_zxkit1_value_cb    menu_zxkit1_cb
     MENUENTRY_T str_joy_a_up      menu_joy_a_up_value_cb  menu_joy_a_up_cb
+    MENUENTRY_T str_FF_port       menu_FF_port_value_cb   menu_FF_port_cb
+    MENUENTRY_T str_SD_memory     menu_SD_memory_value_cb menu_SD_memory_cb
     MENUENTRY_T str_save_settings menu_cfgsave_value_cb   menu_cfgsave_cb
     MENUENTRY_T str_back          0                       menu_back_cb
     MENUENTRY_T 0
@@ -193,6 +195,23 @@ menu_gs_value_cb:
 .values_table:
     DW str_off.end-2
     DW str_on.end-2
+
+menu_FF_port_value_cb:
+    ld ix, .values_table
+    ld a, (cfg.port_FF)
+    jp menu_value_get
+.values_table:
+    DW str_off.end-2
+    DW str_FF_port_timex.end-2
+    DW str_FF_port_zx.end-2
+
+menu_SD_memory_value_cb:
+    ld ix, .values_table
+    ld a, (cfg.memory_SD)
+    jp menu_value_get
+.values_table:
+    DW str_SD_memory_256.end-2
+    DW str_SD_memory_384.end-2
 
 menu_exit_value_cb:
     ld ix, .values_table
@@ -441,6 +460,25 @@ menu_joy_a_up_cb:
     out (c), a
     ret
 
+menu_FF_port_cb:
+    ld a, (cfg.port_FF)
+    ld c, 2
+    call menu_handle_press
+    ld (cfg.port_FF), a
+    ; even if port #FF disabled, current graphics mode will be restored!
+    ld bc, #13ff
+    out (c), a
+    ret
+
+menu_SD_memory_cb:
+    ld a, (cfg.memory_SD)
+    ld c, 1
+    call menu_handle_press
+    ld (cfg.memory_SD), a
+    ld bc, #14ff
+    out (c), a
+    ret
+    
 menu_cfgsave_cb:
     bit 4, d                ; action?
     ret z

@@ -48,6 +48,8 @@ zxkit1     DB 0
 joy_a_up   DB 0
 fastforward DB 0
 cmoscpu    DB 0
+port_FF    DB 1
+memory_SD  DB 0
     ENDS
 
     STRUCT CFGEXT_T

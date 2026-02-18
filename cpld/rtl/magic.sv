@@ -42,7 +42,9 @@ module magic(
     output reg bright_boost,
     output reg zxkit1,
     output reg joy_a_up,
-    output reg fastforward
+    output reg fastforward,
+    output reg [1:0] port_FF,
+    output reg memory_SD_config
 );
 
 localparam magic_on_start = 1'b1;
@@ -132,6 +134,8 @@ reg autoturbo_en = 1'b0;
 reg cmoscpu = 1'b0;
 initial zxkit1 = 1'b0;
 initial joy_a_up = 1'b0;
+initial port_FF = 2'b01;
+initial memory_SD_config = 1'b0;
 
 wire config_cs = magic_map && bus.ioreq && bus.a[7:0] == 8'hFF;
 always @(posedge clk28 or negedge rst_n) begin
@@ -160,6 +164,8 @@ always @(posedge clk28 or negedge rst_n) begin
         8'h10: joy_a_up <= bus.d[0];
         8'h11: fastforward <= bus.d[0];
         8'h12: cmoscpu <= bus.d[0];
+        8'h13: port_FF <= bus.d[1:0];
+        8'h14: memory_SD_config <= bus.d[0];
     endcase
 end
 

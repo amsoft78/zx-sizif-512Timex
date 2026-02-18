@@ -82,7 +82,8 @@ module mem(
     input [7:0] div_dout,
     input ay_dout_active,
     input ports_dout_active,
-    input [7:0] ports_dout
+    input [7:0] ports_dout,
+    input memory_SD_config
 );
 
 wire romreq = bus.mreq && !bus.rfsh && bus.a[15:14] == 2'b00 &&
@@ -95,8 +96,12 @@ always @(posedge clk28)
 always @(posedge clk28)
     n_romcs <= ~romreq;
 
-// reserve 128K RAM for DivMMC
-wire [1:0] ram_pageext0 = {divmmc_en? 1'b1 : ~ram_pageext[1], ~ram_pageext[0]};
+// reserve 128K RAM for DivMMC (ram_a[18:17] == 2'b00), but allow use 384K
+wire [1:0] ram_pageext0 = 
+    (divmmc_en && memory_SD_config && ram_pageext[1] == 1'b1) 
+                                            ? {2'b00} :
+    (divmmc_en)                             ? {1'b1, ~ram_pageext[0]} :
+                                              { ~ram_pageext[1], ~ram_pageext[0]};
 
 wire [18:13] ram_a =
     (magic_map && bus.a[15:14] == 2'b11)           ? {2'b00, 3'b111, bus.a[13]} :

@@ -41,6 +41,7 @@ module video(
     output clk1_5625hz,
     input [5:0] timex_mode,
     input suspend_multicolor,
+    input port_FF_read_timex,
     output ext_palette
 );
 
@@ -398,8 +399,11 @@ end
 /* ATTRIBUTE PORT */
 wire port_ff_attr = (machine == MACHINE_PENT) || hc[3:1] == 3'h6 || hc[3:1] == 3'h0;
 wire port_ff_bitmap = (hc[3] && hc[1]);
-assign port_ff_active = screen_read && (port_ff_attr || port_ff_bitmap);
+
+assign port_ff_active = (screen_read && (port_ff_attr || port_ff_bitmap))
+    || port_FF_read_timex;
 assign port_ff_data =
+    port_FF_read_timex? {2'b00, timex_mode[5:0]} :
     port_ff_attr? attr_next :
     port_ff_bitmap? bitmap_next :
     8'hFF;

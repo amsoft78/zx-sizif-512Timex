@@ -14,7 +14,8 @@ module ulaplus(
     output [5:0] rw_addr,
     output reg [5:0] timex_mode,
     output reg suspend_multicolor,
-    input magic_map
+    input magic_map,
+    input [1:0] port_FF_config
 );
 
 
@@ -63,13 +64,22 @@ always @(posedge clk28 or negedge rst_n) begin
                 //uplus_video_page <= bus.d[2] & ~bus.d[1] & ~bus.d[0];
             end
         end
-        if ((port_ff_cs || port_9ffd_cs) && bus.wr) begin
+        // port_FF_config == 2'b00 blocks setting Timex and CGA graphics modes via #FF port!
+        // port #9ffd always works
+        if (((port_ff_cs && (port_FF_config[1] || port_FF_config[0])) || port_9ffd_cs)
+            && bus.wr) begin
             timex_mode <= bus.d[5:0];
             suspend_multicolor <= 0;
         end
-        if (port_EFF7_cs && bus.wr && bus.d[0]) begin
-            timex_mode <= 6'b111000;
-            suspend_multicolor <= 0;
+        if (port_EFF7_cs && bus.wr) begin
+            if (bus.d[0]) begin
+                timex_mode <= 6'b111000;
+                suspend_multicolor <= 0;
+            end
+            /*else if (bus.d[1]) begin
+                timex_mode <= 6'b000110;
+                suspend_multicolor <= 0;
+            end*/
         end
         if (port_ff3b_cs && bus.wr && addr_reg == 8'b01000000) begin
             active <= bus.d[0];

@@ -1,5 +1,6 @@
 var_save_ay: .32 DB 0
 var_save_ulaplus: DB 0
+var_save_graphisc_mode: DB 0
 var_sp_reg: DW 0
 var_int_vector: DW 0
 var_magic_enter_cnt: DB 0
