@@ -79,9 +79,10 @@ Sega gamepad support will be available starting from PCB rev.D (or Rev.C with sl
 | Alt | Joystick's fire |
 
 ### RAM
-Sizif contains 512K RAM. There are two cases how to access it:
+Sizif contains 512K RAM. There are three cases how to access it:
 1. DivMMC enabled (SD card insert) - 128K available via 7FFDh port, 128K via DFFDh (Profi standart, most compatible with old 128K software) and 128K reserved for DivMMC.
 2. No SD card present - 128K available via 7FFDh and 384K via DFFDh. Please note: ULAplus and Magic button shares one page of memory with DFFD port. If you run 512K-software, it's good idea not to use ULAplus and Magic.
+3. DivMMC enabled (SD card insert) and "Memory with SD card" in Magic Menu advanced tab is set to "384kB". This experimental option re-uses additional 128K not used in option one. As this size is not used in any existing Pentagon, it can be incompatible with some software. However some software recognise this configuration properly (like Memory tester "AUMT").
 
 Note that DFFDh port available only in Pentagon mode.
 
@@ -90,25 +91,45 @@ Sizif have preinstalled esxDOS firmware, which provides ability to load TAP, TRD
 
 ### Timex 2048 MultiColor and HiRes support
 The Timex graphics modes added by amsoft78.
-Basic ways to setup Timex 2048 modes is:
+Basic way to setup Timex 2048 modes is:
 * OUT 255, 1 - use Timex Screen #1 from 0x6000 instead of 0x4000
 * OUT 255, 2 - sets HiColor mode. Screen bitmap is read from 0x4000, but screen attributes are read from 0x6000. Each 8x1 bitmap has separate attributes entry, in opposite to 8x8 in regular Zx Spectrum.
-* OUT 255, 6 - sets HiRes mode. Screen is now 512x192 in two colors. Both Screen #0 from 0x4000 (odd columns) and 0x6000 (even columns) contains bitmap. Bits 5 to 3 in port 0xFF defines the ink color common for the whole screen. Background colour is always its binary inversion.
+* OUT 255, 6 - sets HiRes mode. Screen is now 512x192 in two colors. Both Screen #0 from 0x4000 (odd columns) and 0x6000 (even columns) contains bitmap. Bits 5 to 3 in port 0xFF defines the ink color common for the whole screen. Background color is always its binary inversion.
 * OUT 255, 0 - sets the regular ZX Spectrum mode.
 
-To activate Timex modes, the followig ports can be used:
+To activate Timex modes, the following ports can be used:
 * ZX eLeMeNt compatible port 0x9FFD - shadowing original Timex 0xFF port, but with read and write capabilities.
-* ULA+ compatible method - on port 0xBF3B and "ModeGrop" (bits 7:6 == "01"). See Ula+ specification, as the values are different than for port 0xFF. Warning! As the lot of software first sets the Timex mode by 0xFF, and then sets "01000000" value in 0xBF3B, it would reset Timex mode back to 0. So this combination is ignored - no possibiity to turn off Timex modes via Ula+ port.
-* oryginal Timex 0xFF port - write only. This preserves original ZX Spectrum "Floating Bus", so the port is write-only.
+* ULA+ compatible method - on port 0xBF3B and "ModeGrop" (bits 7:6 == "01"). See Ula+ specification, as the values are different than for port 0xFF. Warning! As the lot of software first sets the Timex mode by 0xFF, and then sets "01000000" value in 0xBF3B, it would reset Timex mode back to 0. So this combination is ignored - no possibility to turn off Timex modes via Ula+ port.
+* original Timex 0xFF port - This port behavior is controlled by Magic Menu advance item "Port #FF". When it is set to "OFF", writing to port has no effects, reading returns regular ZX Spectrum "Floating Bus" values. When the option is set to "Spectrum" reading works the same, but graphics modes can be changed by writing to the port. When option is set to "Timex", the value can be also read, showing current graphics mode.
 
-Warning! The method of binary "or" current 0xFF port value, somewhere adviced to use on original Timex 2048, will not work properly:
+### Additional Graphics modes with 4 or 16 colors out of 256.
+Addition graphics modes are experimental modes made by amsoft78.
+They are Sizif specific, and (mostly) not compatible with other ZX Spectrum clones.
+All modes are based on bits read in Timex HiRes Mode. They are selected by writing some forbidden in Timex2048 bits combinations, to the port #FF or 0x9FFD.
+So all new modes reads 512 bits in each rows, odd 8-bit colums from Video Page 0 (0x4000), even 8-bit columns from Video Page 1.
+The difference in the new modes groups 2 or 4 bits, to achieve 4 and 16 color values.
+So it results in two basic additional "CGA-like" modes, with individual pixels colors:
+- 256x192 in 4 colors (OUT 255, 7 + bits 5..3 holds additional color value),
+- 128x192 in 16 colors (OUT 255, 8 + bits 5 and 4 holds additional options)
+There is also additional mode with "Dual Playfield":
+- 128x192 in 3/4 colors (OUT 255, 3 + bits 5..3 holds additional color value)
+In this case, first "playfield" is read from Video Page 0. 
+Pixels in page 0 (first playfield) can have only one of 3 colors. Color 2 (two color bits value "10") means that first playfield is transparent in this point, and instead, the pixel from the same coordinations in playfield 2 will be shown.
+Opposite to PC CGA card, in 256x192x4 and 128x192x4, the 4 colors are not limited to fixed palette.
+Two colors are shared in 8x8 pixels field in 256x192x4  and 4x8 in dual playfield 128x192x4.
+Two other color values are common for the whole screen, or for the whole line (using ULAPlus registers).
+Mode 128x192 in 16 colors can use Pentagon pixel color organization, and limit th palette to 16 colors, without reading attributes.
+That version of 16col mode can be run with OUT 255, 56.
+It is partially compatible with Pentagon 256x192x16 mode - it shows half of the Pentagon 16col mode columns.
+This mode activates also, when a program tries to use Pentagon 16 col mode with using port #EFF7 (OUT 61431, 1).
+For details see the "multicolor_modes.md" file.
+See also compatible images converter (from JPG, PNG and others, as well as fromCommodore FLI formats) at [Multicolor Converter](https://github.com/amsoft78/SizifMulicolorConverter)
 
-```
-in      a, (0xFF)
-or      a, 2
-out     (0xFF), a
-```
+Example photos of screen showing converted roses image from [Dithertron](https://8bitworkshop.com/dithertron) in 16 color mode:
+[![photo](images/multicolor_pictures/roses16small.png)](images/multicolor_pictures/roses16.png?raw=true)
 
+And some C64 FLI conversion in 4 colors mode:
+[![photo](images/multicolor_pictures/panda4small.png)](images/multicolor_pictures/panda4.png?raw=true)
 
 ### Tested addons
 * [AYX-32](https://github.com/tslabs/arm/tree/master/AYX-32) - OK
