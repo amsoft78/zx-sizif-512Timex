@@ -6,14 +6,14 @@ The "I" attribute has been changed to be "Red++/Green+" boost. It introduces new
 The colors are:
 | Color number (binary) | Samples 0 - 7 | Samples for 8-15 |  Color number (binary) |
 |:-----------------------:|:---------------:|:------------------:|------------------------:|
-|      0       (0b0000) |  <span style="background:#000000"> #000000 </span>    | <span style="background:#806000"> #806000 </span>       |       8      (0b1000) |
-|      1       (0b0001) |  <span style="background:#000080"> #000080 </span>    | <span style="background:#8060FF"> #8060FF </span>       |       9      (0b1001) |
-|      2       (0b0010) |  <span style="background:#800000"> #800000 </span>    | <span style="background:#FF6000"> #FF6000 </span>       |      10      (0b1010) |
-|      3       (0b0011) |  <span style="background:#800080"> #800080 </span>    | <span style="background:#FF60FF"> #FF60FF </span>       |      11      (0b1011) |
-|      4       (0b0100) |  <span style="background:#008000"> #008000 </span>    | <span style="background:#80FF00"> #80FF00 </span>       |      12      (0b1100) |
-|      5       (0b0101) |  <span style="background:#008080"> #008080 </span>    | <span style="background:#80FFFF"> #80FFFF </span>       |      13      (0b1101) |
-|      6       (0b0110) |  <span style="background:#808000"> #808000 </span>    | <span style="background:#FFFF00"> #FFFF00 </span>       |      14      (0b1110) |
-|      6       (0b0111) |  <span style="background:#808080"> #808080 </span>    | <span style="background:#FFFFFF"> #FFFFFF </span>       |      15      (0b1111) |
+|      0       (0b0000) |  $\textsf{\color{#000000}{000000}}$     |  $\textsf{\color{#806000}{806000}}$        |       8      (0b1000) |
+|      1       (0b0001) |  $\textsf{\color{#000080}{000080}}$     | $\textsf{\color{#8060FF}{8060FF}}$        |       9      (0b1001) |
+|      2       (0b0010) |  $\textsf{\color{#800000}{800000}}$     | $\textsf{\color{#FF6000}{FF6000}}$        |      10      (0b1010) |
+|      3       (0b0011) |  $\textsf{\color{#800080}{800080}}$     | $\textsf{\color{#FF60FF}{FF60FF}}$        |      11      (0b1011) |
+|      4       (0b0100) |  $\textsf{\color{#008000}{008000}}$     | $\textsf{\color{#80FF00}{80FF00}}$       |      12      (0b1100) |
+|      5       (0b0101) |  $\textsf{\color{#008080}{008080}}$     | $\textsf{\color{#80FFFF}{80FFFF}}$        |      13      (0b1101) |
+|      6       (0b0110) |  $\textsf{\color{#808000}{808000}}$     | $\textsf{\color{#FFFF00}{FFFF00}}$        |      14      (0b1110) |
+|      7       (0b0111) |  $\textsf{\color{#808080}{808080}}$     | $\textsf{\color{#FFFFFF}{FFFFFF}}$       |      15      (0b1111) |
 
 ## 256x192 and 128x192 4 colors modes details.
 Opposite to PC CGA card, 256x192 the 4 colors are not limited to fixed palette.
